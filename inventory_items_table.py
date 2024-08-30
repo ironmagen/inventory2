@@ -10,6 +10,7 @@ CREATE TABLE items (
     vendor VARCHAR(255),
     type VARCHAR(255),
     quantity_on_hand INTEGER NOT NULL,
+    par INTGER NOT NULL,
     value_on_hand FLOAT NOT NULL,
     last_ordered DATE
 );
