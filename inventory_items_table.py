@@ -4,7 +4,7 @@ conn = psycopg2.connect(dbname="inventory")
 cur = conn.cursor()
 
 cur.execute("""
-CREATE TABLE items (
+CREATE TABLE inventory_items (
     item_id SERIAL PRIMARY KEY,
     item_name VARCHAR(255) NOT NULL,
     vendor VARCHAR(255),
