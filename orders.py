@@ -1,6 +1,5 @@
 import psycopg2
 
-
 def create_order(conn, cursor, vendor_filter=None, type_filter=None):
     """
     Filters items based on vendor or type, allows user input for quantity,
@@ -20,10 +19,10 @@ def create_order(conn, cursor, vendor_filter=None, type_filter=None):
     elif type_filter:
         filter_clause = f" WHERE type = '{type_filter}'"
 
-    # Get items from inventory table
+    # Get items from inventory_items table
     query = f"""
     SELECT item_id, item_name, vendor, quantity_on_hand, par, value_on_hand
-    FROM items
+    FROM inventory_items
     {filter_clause}
     """
     cursor.execute(query)
@@ -49,7 +48,7 @@ def create_order(conn, cursor, vendor_filter=None, type_filter=None):
     CREATE TABLE IF NOT EXISTS orders (
         order_id SERIAL PRIMARY KEY,
         vendor VARCHAR(255) NOT NULL,
-        item_id INTEGER NOT NULL REFERENCES items(item_id),
+        item_id INTEGER NOT NULL REFERENCES inventory_items(item_id),  # Corrected table name
         item_name VARCHAR(255) NOT NULL,
         order_quantity INTEGER NOT NULL
     );
@@ -66,9 +65,8 @@ def create_order(conn, cursor, vendor_filter=None, type_filter=None):
         conn.commit()
         print(f"Successfully created {len(orders)} orders.")
 
-
 if __name__ == "__main__":
-    # Connect to the inventory database (replace with your connection details)
+    # Connect to the inventory database
     conn = psycopg2.connect(dbname="inventory")
     cursor = conn.cursor()
 
@@ -82,6 +80,8 @@ if __name__ == "__main__":
         create_order(conn, cursor, type_filter=type_filter)
     else:
         print("Invalid filter option.")
+
+
 
     # Close database connection
     conn.close()
