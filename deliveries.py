@@ -86,18 +86,34 @@ def process_delivery(conn, cursor, order_id):
     if proceed.lower() != 'y':
         return
 
-    # Get user input for quantity delivered (optional)
+    # Get user input for quantity and price delivered (optional)
     quantity_delivered_list = []
+    price_delivered_list = []
     for item in order_details:
         quantity_expected = item[2]
         quantity_delivered = input(f"Enter quantity delivered for '{item[1]}' (expected: {quantity_expected}): ")
         if quantity_delivered:
             try:
                 quantity_delivered = int(quantity_delivered)
+                if quantity_delivered < quantity_expected - 5 or quantity_delivered > quantity_expected + 5:
+                    print("Quantity delivered is significantly different from expected. Please review.")
             except ValueError:
                 print("Invalid quantity. Please enter an integer.")
                 return
-            quantity_delivered_list.append((order_id))
+
+        price_delivered = input(f"Enter price delivered for '{item[1]}' (expected: ${item[4]:.2f}): ")
+        if price_delivered:
+            try:
+                price_delivered = float(price_delivered)
+                if price_delivered < item[4] - 0.5 or price_delivered > item[4] + 0.5:
+                    print("Price delivered is significantly different from expected. Please review.")
+            except ValueError:
+                print("Invalid price. Please enter a decimal number.")
+                return
+
+        quantity_delivered_list.append((order_id, quantity_delivered))
+        price_delivered_list.append((order_id, item[0], price_delivered))
+
 
       # Create deliveries table if it doesn't exist
     cursor.execute("""
@@ -112,14 +128,15 @@ def process_delivery(conn, cursor, order_id):
     conn.commit()
 
     # Insert delivery data into the deliveries table
-    for item in order_details:
-        # ... (rest of the code for verifying quantities and prices)
+    for i, item in enumerate(order_details):
+        # Calculate total item price based on verified quantity and price
+        total_item_price = quantity_delivered_list[i][1] * price_delivered_list[i][2]
 
         # Insert delivery data
         cursor.execute("""
-        INSERT INTO deliveries (order_id, item_id, quantity_delivered, total_item_price)
-        VALUES (%s, %s, %s, %s)
-        """, (order_id, item[0], quantity_delivered, total_item_price))
+            INSERT INTO deliveries (order_id, item_id, quantity_delivered, total_item_price)
+            VALUES (%s, %s, %s, %s)
+        """, (order_id, item[0], quantity_delivered_list[i][1], total_item_price))
     conn.commit()
 
     # Update order status to "closed"
