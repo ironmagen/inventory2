@@ -1,43 +1,46 @@
 import psycopg2
 
+#Connct to inventory database
 def connect_to_database():
-    """Connects to the inventory database."""
     conn = psycopg2.connect(dbname="inventory")
     return conn
 
+# Insert a new item into the database
 def insert_item(conn, item_name, vendor, quantity, value, last_ordered):
-    """Inserts a new item into the database."""
     cur = conn.cursor()
     cur.execute("INSERT INTO items (item_name, vendor, quantity_on_hand, value_on_hand, last_ordered) VALUES (%s, %s, %s, %s, %s)",
                 (item_name, vendor, quantity, value, last_ordered))
     conn.commit()
     cur.close()
 
+
+#Retrieve all items from the database
 def get_all_items(conn):
-    """Retrieves all items from the database."""
     cur = conn.cursor()
     cur.execute("SELECT * FROM items")
     rows = cur.fetchall()
     cur.close()
     return rows
 
+
+#Update the quantity and value of an item
 def update_item(conn, item_id, quantity, value):
-    """Updates the quantity and value of an item."""
     cur = conn.cursor()
     cur.execute("UPDATE items SET quantity_on_hand = %s, value_on_hand = %s WHERE item_id = %s",
                 (quantity, value, item_id))
     conn.commit()
     cur.close()
 
+#Delete an item from the database
 def delete_item(conn, item_id):
-    """Deletes an item from the database."""
     cur = conn.cursor()
     cur.execute("DELETE FROM items WHERE item_id = %s", (item_id,))
     conn.commit()
     cur.close()
 
+
+#Retrieve detailed information about a specific item, including dynamic sales category percentages
 def get_item_details(conn, item_id, sales_data):
-    """Retrieves detailed information about a specific item, including dynamic sales category percentages."""
     cur = conn.cursor()
     cur.execute("""
     SELECT
@@ -84,16 +87,18 @@ def get_item_details(conn, item_id, sales_data):
     cur.close()
     return rows
 
+
+#Calculate the total value of all inventory items on hand
 def calculate_total_inventory_value(conn):
-    """Calculates the total value of all inventory items on hand."""
     cur = conn.cursor()
     cur.execute("SELECT SUM(quantity_on_hand * value_on_hand) FROM items")
     total_value = cur.fetchone()[0]
     cur.close()
     return total_value
 
+
+#Calculate the discrepancy between recorded quantity and hard count
 def calculate_discrepancy(conn, item_id, hard_count):
-    """Calculates the discrepancy between recorded quantity and hard count."""
     cur = conn.cursor()
     cur.execute("SELECT quantity_on_hand FROM items WHERE item_id = %s", (item_id,))
     recorded_quantity = cur.fetchone()[0]
@@ -101,8 +106,9 @@ def calculate_discrepancy(conn, item_id, hard_count):
     discrepancy = recorded_quantity - hard_count
     return discrepancy
 
+
+#Update the hard count for a specific item
 def update_item_hard_count(conn, item_id, hard_count):
-    """Updates the hard count for a specific item."""
     cur = conn.cursor()
     cur.execute("UPDATE items SET hard_count = %s WHERE item_id = %s", (hard_count, item_id))
     conn.commit()
