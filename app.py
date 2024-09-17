@@ -67,6 +67,17 @@ def get_sales():
     sales_data = sales_items.get_sales()
     return render_template('sales.html', sales=sales_data)
 
+sales_items = SalesItems(
+    dbname="your_database_name",
+    user="your_database_user",
+    password="your_database_password",
+    host="localhost",
+    port=5432
+)
+
+sales_items.create_table(max_ingredients=3)
+sales_items.close_connection()
+
 
 @app.route('/add_sale', methods=['POST'])
 def add_sale():
