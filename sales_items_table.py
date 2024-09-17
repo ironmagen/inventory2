@@ -1,54 +1,76 @@
 import psycopg2
+from psycopg2 import pool
 
 
-def create_sales_items_table(dbname, user, password, host="localhost", port=5432, max_ingredients=3):
-    """
-    Creates a table named "sales_items" with the following columns:
+class SalesItems:
+    def __init__(self, db_pool):
+        self.db_pool = db_pool
 
-    - sales_item (VARCHAR(255) NOT NULL): The name of the sales item.
-    - sales_item_category (VARCHAR(255)): The category of the sales item.
-    - ingredient{n} (VARCHAR(255) FOREIGN KEY REFERENCES inventory_items(item_name)):
-      The name of ingredient {n} (up to 3 ingredients), referencing items in the "inventory_items" table.
-    - ingredient{n}_useage (FLOAT NOT NULL): The volume used per sales_item for each ingredient.
+    def create_sales_table(self):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS sales (
+                    sale_id SERIAL PRIMARY KEY,
+                    sale_date DATE NOT NULL,
+                    item_name VARCHAR(255) NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    price FLOAT NOT NULL
+                );
+            """)
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-    Args:
-        dbname (str): The name of the database to connect to.
-        user (str): The username for database access.
-        password (str): The password for database access.
-        host (str, optional): The hostname or IP address of the database server (defaults to "localhost").
-        port (int, optional): The port number of the database server (defaults to 5432).
-        max_ingredients (int, optional): The maximum number of ingredients to include (defaults to 3).
+    def add_sale(self, sale_data):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO sales (sale_date, item_name, quantity, price)
+                VALUES (%s, %s, %s, %s);
+            """, (sale_data['sale_date'], sale_data['item_name'], sale_data['quantity'], sale_data['price']))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-    Raises:
-        psycopg2.OperationalError: If an error occurs while connecting to the database or executing the CREATE TABLE statement.
-    """
+    def get_sales(self):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM sales;")
+            rows = cur.fetchall()
+            return rows
+        finally:
+            self.db_pool.putconn(conn)
 
-    try:
-        conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
-        cur = conn.cursor()
+    def update_sale(self, sale_id, sale_date, item_name, quantity, price):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE sales
+                SET sale_date = %s, item_name = %s, quantity = %s, price = %s
+                WHERE sale_id = %s;
+            """, (sale_date, item_name, quantity, price, sale_id))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-        # Create the table with dynamic column names for ingredients and usage
-        ingredient_cols = []
-        usage_cols = []
-        for i in range(1, max_ingredients + 1):
-            ingredient_cols.append(f"ingredient{i} VARCHAR(255) FOREIGN KEY REFERENCES inventory_items(item_name)")
-            usage_cols.append(f"ingredient{i}_useage FLOAT NOT NULL")
+    def delete_sale(self, sale_id):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM sales WHERE sale_id = %s;", (sale_id,))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-        create_table_stmt = f"""
-            CREATE TABLE sales_items (
-                sales_item VARCHAR(255) NOT NULL,
-                sales_item_category VARCHAR(255),
-                {', '.join(ingredient_cols)},
-                {', '.join(usage_cols)}
-            );
-        """
 
-        cur.execute(create_table_stmt)
-        conn.commit()
-        print("Table 'sales_items' created successfully.")
+# Use the existing database connection pool from app.py
+from app import db_pool
 
-    except psycopg2.OperationalError as e:
-        print(f"Error connecting to database or creating table: {e}")
-    finally:
-        if conn:
-            conn.close()
+
+# Initialize SalesItems class with database connection pool
+sales_items = SalesItems(db_pool)
