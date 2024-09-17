@@ -1,156 +1,80 @@
 import psycopg2
+from psycopg2 import pool
 
 
 class InventoryItems:
-    """
-    A class to manage the inventory_items table in the database.
-    """
+    def __init__(self, db_pool):
+        self.db_pool = db_pool
 
-    def __init__(self, dbname, user, password, host="localhost", port=5432):
-        """
-        Initializes the InventoryItems class.
+    def connect_to_database(self):
+        # Connection pooling handles connection creation
+        pass
 
-        Args:
-            dbname (str): The name of the database to connect to.
-            user (str): The username for database access.
-            password (str): The password for database access.
-            host (str, optional): The hostname or IP address of the database server (defaults to "localhost").
-            port (int, optional): The port number of the database server (defaults to 5432).
-        """
+    def create_inventory_table(self):
+        conn = self.db_pool.getconn()
         try:
-            self.conn = psycopg2.connect(
-                dbname=dbname, user=user, password=password, host=host, port=port
-            )
-            self.cur = self.conn.cursor()
-        except psycopg2.OperationalError as e:
-            print(f"Error connecting to database: {e}")
-            self.conn = None
-            self.cur = None
-
-    def create_table(self):
-        """
-        Creates the inventory_items table.
-        """
-        if self.conn is None:
-            print("Database connection failed. Cannot create table.")
-            return
-
-        try:
-            create_table_stmt = """
-                CREATE TABLE IF NOT EXISTS inventory_items (
-                    item_name VARCHAR(255) PRIMARY KEY,
-                    item_description TEXT,
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS inventory (
+                    item_id SERIAL PRIMARY KEY,
+                    item_name VARCHAR(255) NOT NULL,
+                    vendor_name VARCHAR(255) NOT NULL,
                     quantity INTEGER NOT NULL,
-                    unit_price FLOAT NOT NULL
+                    value FLOAT NOT NULL
                 );
-            """
+            """)
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-            self.cur.execute(create_table_stmt)
-            self.conn.commit()
-            print("Table 'inventory_items' created successfully.")
-        except psycopg2.OperationalError as e:
-            print(f"Error creating table: {e}")
-
-    def insert_item(self, item_name, item_description, quantity, unit_price):
-        """
-        Inserts a new item into the inventory_items table.
-
-        Args:
-            item_name (str): The name of the item.
-            item_description (str): The description of the item.
-            quantity (int): The quantity of the item.
-            unit_price (float): The unit price of the item.
-        """
-        if self.conn is None:
-            print("Database connection failed. Cannot insert item.")
-            return
-
+    def add_item(self, item_data):
+        conn = self.db_pool.getconn()
         try:
-            insert_stmt = """
-                INSERT INTO inventory_items (
-                    item_name, item_description, quantity, unit_price
-                ) VALUES (
-                    %s, %s, %s, %s
-                );
-            """
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO inventory (item_name, vendor_name, quantity, value)
+                VALUES (%s, %s, %s, %s);
+            """, (item_data['item_name'], item_data['vendor_name'], item_data['quantity'], item_data['value']))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-            self.cur.execute(insert_stmt, (
-                item_name, item_description, quantity, unit_price
-            ))
-            self.conn.commit()
-            print("Item inserted successfully.")
-        except psycopg2.OperationalError as e:
-            print(f"Error inserting item: {e}")
-
-    def update_item(self, item_name, item_description=None, quantity=None, unit_price=None):
-        """
-        Updates an existing item in the inventory_items table.
-
-        Args:
-            item_name (str): The name of the item.
-            item_description (str, optional): The new description of the item.
-            quantity (int, optional): The new quantity of the item.
-            unit_price (float, optional): The new unit price of the item.
-        """
-        if self.conn is None:
-            print("Database connection failed. Cannot update item.")
-            return
-
+    def get_inventory(self):
+        conn = self.db_pool.getconn()
         try:
-            update_stmt = """
-                UPDATE inventory_items
-                SET {}
-                WHERE item_name = %s;
-            """.format(
-                ', '.join([
-                    f"item_description = '{item_description}'" if item_description else '',
-                    f"quantity = {quantity}" if quantity else '',
-                    f"unit_price = {unit_price}" if unit_price else ''
-                ])
-            )
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM inventory;")
+            rows = cur.fetchall()
+            return rows
+        finally:
+            self.db_pool.putconn(conn)
 
-            self.cur.execute(update_stmt, (item_name,))
-            self.conn.commit()
-            print("Item updated successfully.")
-        except psycopg2.OperationalError as e:
-            print(f"Error updating item: {e}")
-
-    def delete_item(self, item_name):
-        """
-        Deletes an item from the inventory_items table.
-
-        Args:
-            item_name (str): The name of the item.
-        """
-        if self.conn is None:
-            print("Database connection failed. Cannot delete item.")
-            return
-
+    def update_item(self, item_id, item_name, vendor_name, quantity, value):
+        conn = self.db_pool.getconn()
         try:
-            delete_stmt = """
-                DELETE FROM inventory_items
-                WHERE item_name = %s;
-            """
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE inventory
+                SET item_name = %s, vendor_name = %s, quantity = %s, value = %s
+                WHERE item_id = %s;
+            """, (item_name, vendor_name, quantity, value, item_id))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-            self.cur.execute(delete_stmt, (item_name,))
-            self.conn.commit()
-            print("Item deleted successfully.")
-        except psycopg2.OperationalError as e:
-            print(f"Error deleting item: {e}")
-
-    def close_connection(self):
-        """
-        Closes the database connection.
-        """
-        if self.conn:
-            self.conn.close()
+    def delete_item(self, item_id):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM inventory WHERE item_id = %s;", (item_id,))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
 
-# Example usage in app.py:
-# inventory = InventoryItems(
-#     dbname="your_database_name",
-#     user="your_database_user",
-#     password="your_database_password",
-#     host="localhost",
-#     port=5432
-#
+# Use the existing database connection pool from app.py
+from app import db_pool
+
+
+# Initialize InventoryItems class with database connection pool
+inventory_items = InventoryItems(db_pool)
