@@ -4,6 +4,7 @@ from inventory_utilities import InventoryUtilities
 from sales_items import SalesItems
 from orders import Orders
 from deliveries import Deliveries
+from database_utilities import DatabaseConnectionPool
 from flask import Flask, render_template, request
 
 
