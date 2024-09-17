@@ -1,77 +1,59 @@
-import inventory_utils
+import psycopg2
+from psycopg2 import pool
 
 
-class InventoryInput:
-    def __init__(self, conn):
-        """
-        Initializes the InventoryInput class.
+class InventoryUtilities:
+    def __init__(self, db_pool):
+        self.db_pool = db_pool
 
-        Args:
-            conn (psycopg2.connect): Connection to the inventory database.
-        """
-        self.conn = conn
+    def get_utilities(self):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM utilities;")
+            rows = cur.fetchall()
+            return rows
+        finally:
+            self.db_pool.putconn(conn)
 
-    def get_inventory_items(self, vendor=None):
-        """
-        Retrieves inventory items from the inventory_items_table, optionally filtered by vendor.
+    def run_utility(self, utility_data):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO utilities (utility_name, parameters)
+                VALUES (%s, %s);
+            """, (utility_data['utility_name'], utility_data['parameters']))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-        Args:
-            vendor (str, optional): Vendor name to filter by. Defaults to None.
+    def update_utility(self, utility_id, utility_name, parameters):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE utilities
+                SET utility_name = %s, parameters = %s
+                WHERE utility_id = %s;
+            """, (utility_name, parameters, utility_id))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
-        Returns:
-            list: Inventory items.
-        """
-        if vendor:
-            cur = self.conn.cursor()
-            cur.execute("SELECT * FROM inventory_items_table WHERE vendor = %s", (vendor,))
-            items = cur.fetchall()
-            cur.close()
-        else:
-            items = inventory_utils.get_all_items(self.conn)
-        return items
-
-    def get_user_input(self, item):
-        """
-        Prompts user to input quantity on hand for a given item.
-
-        Args:
-            item (tuple): Inventory item.
-
-        Returns:
-            str: User-input quantity.
-        """
-        quantity = input(f"Enter quantity on hand for {item[1]}: ")
-        return quantity
-
-    def update_inventory_with_user_input(self, items):
-        """
-        Updates inventory quantities based on user input.
-
-        Args:
-            items (list): Inventory items.
-        """
-        for item in items:
-            quantity = self.get_user_input(item)
-            inventory_utils.update_item(self.conn, item[0], quantity, item[4])
-
-    def run_input_process(self, vendor=None):
-        """
-        Runs the inventory input process.
-
-        Args:
-            vendor (str, optional): Vendor name to filter by. Defaults to None.
-        """
-        items = self.get_inventory_items(vendor)
-        if not items:
-            print("No items found for the specified vendor.")
-        else:
-            self.update_inventory_with_user_input(items)
+    def delete_utility(self, utility_id):
+        conn = self.db_pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM utilities WHERE utility_id = %s;", (utility_id,))
+            conn.commit()
+        finally:
+            self.db_pool.putconn(conn)
 
 
-# Example usage:
-if __name__ == "__main__":
-    conn = inventory_utils.connect_to_database()
-    vendor = input("Enter vendor (leave blank for all): ")
-    input_process = InventoryInput(conn)
-    input_process.run_input_process(vendor)
-    conn.close()
+# Use the existing database connection pool from app.py
+from app import db_pool
+
+
+# Initialize InventoryUtilities class with database connection pool
+inventory_utilities = InventoryUtilities(db_pool)
