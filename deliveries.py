@@ -1,4 +1,3 @@
-import psycopg2
 from datetime import datetime
 
 def show_open_orders(conn, cursor, filter_date=None, vendor_filter=None):
@@ -68,6 +67,25 @@ def view_order_details(conn, cursor, order_id):
     for item in order_details:
         print(f"{item[0]}\t{item[1]}\t{item[2]}\t{item[3]}\t${item[4]:.2f}\t${item[5]:.2f}")
 
+def get_order_details(conn, cursor, order_id):
+    """
+    Retrieves order details from the database.
+
+    Args:
+        conn (psycopg2.connect): Connection to the inventory database.
+        cursor (psycopg2.cursor): Database cursor for executing queries.
+        order_id (int): Order ID to retrieve details for.
+
+    Returns:
+        list: Order details.
+    """
+    cursor.execute("""
+        SELECT *
+        FROM order_items
+        WHERE order_id = %s
+    """, (order_id,))
+    return cursor.fetchall()
+
 def process_delivery(conn, cursor, order_id):
     """
     Processes a delivery for a specific order, allowing verification/override
@@ -89,6 +107,7 @@ def process_delivery(conn, cursor, order_id):
     # Get user input for quantity and price delivered (optional)
     quantity_delivered_list = []
     price_delivered_list = []
+    order_details = get_order_details(conn, cursor, order_id)
     for item in order_details:
         quantity_expected = item[2]
         quantity_delivered = input(f"Enter quantity delivered for '{item[1]}' (expected: {quantity_expected}): ")
