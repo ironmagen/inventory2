@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory</title>
+</head>
+<body>
+    <h1>Inventory</h1>
+    <table>
+        <tr>
+            <th>Item ID</th>
+            <th>Item Name</th>
+            <th>Quantity</th>
+        </tr>
+        {% for item in inventory %}
+        <tr>
+            <td>{{ item.id }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.quantity }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <form action="/add_item" method="post">
+        <label for="item_name">Item Name:</label>
+        <input type="text" id="item_name" name="item_name">
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity">
+        <input type="submit" value="Add Item">
+    </form>
+</body>
+</html>
