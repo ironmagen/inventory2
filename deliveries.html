@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deliveries</title>
+</head>
+<body>
+    <h1>Deliveries</h1>
+    <table>
+        <tr>
+            <th>Delivery ID</th>
+            <th>Order ID</th>
+            <th>Date</th>
+            <th>Status</th>
+        </tr>
+        {% for delivery in deliveries %}
+        <tr>
+            <td>{{ delivery.id }}</td>
+            <td>{{ delivery.order_id }}</td>
+            <td>{{ delivery.date }}</td>
+            <td>{{ delivery.status }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <form action="/record_delivery" method="post">
+        <label for="order_id">Order ID:</label>
+        <input type="number" id="order_id" name="order_id">
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date">
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="pending">Pending</option>
+            <option value="in_transit">In Transit</option>
+            <option value="delivered">Delivered</option>
+        </select>
+        <input type="submit" value="Record Delivery">
+    </form>
+</body>
+</html>
